@@ -1,0 +1,32 @@
+//@version=5
+indicator("MACD Indicator", overlay=false)
+
+// Input parameters
+fast_length = input.int(12, title="Fast Length")
+slow_length = input.int(26, title="Slow Length")
+signal_length = input.int(9, title="Signal Length")
+
+// Calculate MACD
+[macd_line, signal_line, hist_line] = ta.macd(close, fast_length, slow_length, signal_length)
+
+// Plot MACD components
+plot(macd_line, title="MACD", color=color.blue, linewidth=2)
+plot(signal_line, title="Signal", color=color.orange, linewidth=2)
+plot(hist_line, title="Histogram", color=color.gray, style=plot.style_columns)
+
+// Zero line
+hline(0, "Zero Line", color=color.black)
+
+// Signal crossover
+bullish_cross = ta.crossover(macd_line, signal_line)
+bearish_cross = ta.crossunder(macd_line, signal_line)
+
+// Plot signals
+plotshape(bullish_cross, title="Bullish Signal", location=location.belowbar, 
+         color=color.green, style=shape.labelup, text="BULLISH")
+plotshape(bearish_cross, title="Bearish Signal", location=location.abovebar, 
+         color=color.red, style=shape.labeldown, text="BEARISH")
+
+// Alert conditions
+alertcondition(bullish_cross, title="MACD Bullish Signal", message="MACD crossed above Signal")
+alertcondition(bearish_cross, title="MACD Bearish Signal", message="MACD crossed below Signal")

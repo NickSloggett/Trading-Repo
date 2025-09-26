@@ -1,0 +1,19 @@
+//@version=5
+indicator("Template Indicator", shorttitle="TI", overlay=true)
+
+// Inputs
+length = input.int(14, title="Length", minval=1)
+src = input.source(close, title="Source")
+
+// Calculations
+ma = ta.sma(src, length)
+
+// Plotting
+plot(ma, color=color.blue, title="Moving Average", linewidth=2)
+
+// Additional plots or conditions
+bgcolor(ta.crossover(src, ma) ? color.new(color.green, 90) : na, title="Bullish Signal")
+
+// Alerts
+alertcondition(ta.crossover(src, ma), title="Bullish Crossover", message="Price crossed above MA")
+alertcondition(ta.crossunder(src, ma), title="Bearish Crossunder", message="Price crossed below MA")

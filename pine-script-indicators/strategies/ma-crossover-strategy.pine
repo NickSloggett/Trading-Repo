@@ -1,0 +1,35 @@
+//@version=5
+strategy("MA Crossover Strategy", shorttitle="MACross", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// Inputs
+fast_length = input.int(9, title="Fast MA Length", minval=1)
+slow_length = input.int(21, title="Slow MA Length", minval=1)
+src = input.source(close, title="Source")
+
+// Calculations
+fast_ma = ta.sma(src, fast_length)
+slow_ma = ta.sma(src, slow_length)
+
+// Plots
+plot(fast_ma, color=color.green, title="Fast MA")
+plot(slow_ma, color=color.red, title="Slow MA")
+
+// Entry/Exit Conditions
+long_condition = ta.crossover(fast_ma, slow_ma)
+short_condition = ta.crossunder(fast_ma, slow_ma)
+
+// Strategy Orders
+if (long_condition)
+    strategy.entry("Long", strategy.long)
+if (short_condition)
+    strategy.entry("Short", strategy.short)
+
+// Optional: Close positions on opposite signal
+if (short_condition)
+    strategy.close("Long")
+if (long_condition)
+    strategy.close("Short")
+
+// Alerts
+alertcondition(long_condition, title="Long Entry", message="Enter Long Position")
+alertcondition(short_condition, title="Short Entry", message="Enter Short Position")

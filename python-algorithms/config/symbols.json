@@ -1,0 +1,19 @@
+{
+  "symbols": [
+    "AAPL",
+    "GOOGL",
+    "MSFT",
+    "TSLA",
+    "AMZN",
+    "NVDA",
+    "META",
+    "SPY",
+    "QQQ",
+    "BTC-USD"
+  ],
+  "markets": {
+    "stocks": ["AAPL", "GOOGL", "MSFT"],
+    "etfs": ["SPY", "QQQ"],
+    "crypto": ["BTC-USD"]
+  }
+}

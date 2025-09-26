@@ -1,0 +1,33 @@
+//@version=5
+indicator("RSI Indicator", overlay=false)
+
+// Input parameters
+rsi_length = input.int(14, title="RSI Length", minval=1)
+rsi_src = input.source(close, title="RSI Source")
+
+// Calculate RSI
+rsi_value = ta.rsi(rsi_src, rsi_length)
+
+// Plot RSI
+plot(rsi_value, title="RSI", color=color.blue, linewidth=2)
+
+// Overbought/Oversold levels
+hline(70, "Overbought", color=color.red, linestyle=hline.style_dashed)
+hline(30, "Oversold", color=color.green, linestyle=hline.style_dashed)
+
+// Color zones
+fill(30, 70, color.new(color.blue, 90), title="RSI Range")
+
+// Signals
+oversold_condition = ta.crossover(rsi_value, 30)
+overbought_condition = ta.crossunder(rsi_value, 70)
+
+// Plot signals
+plotshape(oversold_condition, title="Buy Signal", location=location.belowbar, 
+         color=color.green, style=shape.labelup, text="BUY")
+plotshape(overbought_condition, title="Sell Signal", location=location.abovebar, 
+         color=color.red, style=shape.labeldown, text="SELL")
+
+// Alert conditions
+alertcondition(oversold_condition, title="RSI Buy Signal", message="RSI crossed above 30")
+alertcondition(overbought_condition, title="RSI Sell Signal", message="RSI crossed below 70")
