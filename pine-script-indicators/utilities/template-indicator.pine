@@ -17,3 +17,4 @@ bgcolor(ta.crossover(src, ma) ? color.new(color.green, 90) : na, title="Bullish 
 // Alerts
 alertcondition(ta.crossover(src, ma), title="Bullish Crossover", message="Price crossed above MA")
 alertcondition(ta.crossunder(src, ma), title="Bearish Crossunder", message="Price crossed below MA")
+

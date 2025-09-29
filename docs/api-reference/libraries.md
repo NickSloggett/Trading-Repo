@@ -31,3 +31,4 @@
 
 - [Study Development](https://www.motivewave.com/support/study_development.htm)
 - Key: `Study` class, `DataContext`, settings.
+

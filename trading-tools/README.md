@@ -35,3 +35,4 @@ plot_candlesticks(data)
 These tools can be imported into `python-algorithms/strategies/` for end-to-end workflows.
 
 Contribute by adding new tools or improving existing ones!
+

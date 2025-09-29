@@ -45,3 +45,4 @@ public class TemplateStudy extends Study {
         series.setComplete(index, true);
     }
 }
+

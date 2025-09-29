@@ -94,3 +94,4 @@ Open `notebooks/trading_data_analysis.ipynb` for loading data, computing indicat
 - [Pandas for Finance](https://www.oreilly.com/library/view/python-for-finance/9781492024347/)
 
 Contribute new strategies or analysis scripts!
+

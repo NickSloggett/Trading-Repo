@@ -32,3 +32,4 @@ Example: Add to editor and customize inputs.
 
 - Explore `advanced/` for complex examples.
 - Learn more: [Pine Script Docs](https://www.tradingview.com/pine-script-docs/)
+

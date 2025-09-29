@@ -1,41 +1,215 @@
-name: Python Tests
+name: Python Tests and Quality Checks
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ['3.9', '3.11']
-
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+      fail-fast: false
+    
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg15
+        env:
+          POSTGRES_DB: trading_data_test
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
     steps:
-    - uses: actions/checkout@v4
-
+    - uses: actions/checkout@v3
+    
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libssl-dev
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r python-algorithms/requirements.txt
+        pip install -r requirements-dev.txt
+        pip install pytest pytest-cov pytest-xdist pytest-asyncio
+    
+    - name: Lint with flake8
+      run: |
+        pip install flake8
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    
+    - name: Format check with black
+      run: |
+        pip install black
+        black --check --diff .
+      continue-on-error: true
+    
+    - name: Type checking with mypy
+      run: |
+        pip install mypy
+        mypy data-management/ python-algorithms/ --ignore-missing-imports
+      continue-on-error: true
+    
+    - name: Security check with bandit
+      run: |
+        pip install bandit
+        bandit -r data-management/ python-algorithms/ -ll
+      continue-on-error: true
+    
+    - name: Run unit tests
+      env:
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_DB: trading_data_test
+        POSTGRES_USER: test_user
+        POSTGRES_PASSWORD: test_password
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+      run: |
+        pytest tests/unit/ -v --cov=data-management --cov=python-algorithms --cov-report=xml --cov-report=html -n auto
+    
+    - name: Run integration tests
+      env:
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_DB: trading_data_test
+        POSTGRES_USER: test_user
+        POSTGRES_PASSWORD: test_password
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+      run: |
+        pytest tests/integration/ -v -n auto
+      continue-on-error: true
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+    
+    - name: Generate coverage report
+      if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
+      run: |
+        pip install coverage
+        coverage report
+        coverage html
+    
+    - name: Archive coverage results
+      if: matrix.python-version == '3.11' && matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: htmlcov/
 
+  backtest-strategies:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
     - name: Install dependencies
       run: |
-        cd python-algorithms
-        pip install -r requirements.txt
-        pip install pytest  # For testing
-
-    - name: Run tests
+        pip install -r python-algorithms/requirements.txt
+    
+    - name: Run strategy backtests
       run: |
-        cd python-algorithms
-        # Example: Run the backtest script (no assert, just check runs)
-        python backtesting/example_ma_crossover.py || echo "Backtest completed (plot skipped in CI)"
-        # Add pytest if tests added
-        # pytest tests/
-
-    - name: Lint Python
-      uses: pre-commit/action@v3
+        python tests/backtests/test_all_strategies.py
+      continue-on-error: true
+    
+    - name: Upload backtest results
+      uses: actions/upload-artifact@v3
       with:
-        extra_args: python-algorithms --all-files
+        name: backtest-results
+        path: tests/backtests/results/
+
+  data-quality:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Check data quality
+      run: |
+        python -m data_management.validation.check_all_symbols
+      continue-on-error: true
+
+  build-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install sphinx sphinx-rtd-theme
+    
+    - name: Build documentation
+      run: |
+        cd docs
+        make html
+      continue-on-error: true
+    
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/_build/html

@@ -34,3 +34,4 @@ See template for SMA example.
 
 - Add settings and multiple outputs.
 - Learn more: [MotiveWave SDK Docs](https://www.motivewave.com/support/SDK.htm)
+

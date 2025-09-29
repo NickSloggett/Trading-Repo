@@ -68,3 +68,4 @@ alertcondition(ta.crossover(close, ma), title="Bullish Crossover", message="Pric
 - [TradingView Community Scripts](https://www.tradingview.com/scripts/)
 
 Contribute new indicators by adding `.pine` files and updating this README.
+

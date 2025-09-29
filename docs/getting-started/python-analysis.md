@@ -50,3 +50,4 @@ jupyter notebook
 - Add more symbols from `config/symbols.json`.
 - Explore `trading-tools/` for modular functions.
 - Resources: [Backtrader Docs](https://www.backtrader.com/docu/)
+

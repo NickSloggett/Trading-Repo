@@ -39,3 +39,4 @@ if __name__ == '__main__':
     metrics = compute_metrics(data)
     for key, value in metrics.items():
         print(f"{key}: {value:.4f}")
+

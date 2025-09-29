@@ -1,0 +1,296 @@
+version: '3.8'
+
+# Full Stack Trading Platform
+# Includes: Database, Cache, Monitoring, Data Ingestion, API, Jupyter
+
+services:
+  # ===== DATABASE =====
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: trading-timescaledb
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: trading_data
+      POSTGRES_USER: trading_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
+      TIMESCALEDB_TELEMETRY: "off"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./data-management/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - trading-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading_admin -d trading_data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c" 
+      - "shared_preload_libraries=timescaledb"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=4GB"
+      - "-c"
+      - "effective_cache_size=12GB"
+      - "-c"
+      - "maintenance_work_mem=1GB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "work_mem=20MB"
+      - "-c"
+      - "min_wal_size=2GB"
+      - "-c"
+      - "max_wal_size=8GB"
+
+  # ===== CACHE =====
+  redis:
+    image: redis:7-alpine
+    container_name: trading-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - trading-network
+    command: redis-server --appendonly yes --maxmemory 4gb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ===== DATABASE ADMIN =====
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: trading-pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@trading.local
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - trading-network
+    depends_on:
+      - timescaledb
+
+  # ===== MONITORING =====
+  grafana:
+    image: grafana/grafana:latest
+    container_name: trading-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: ""
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - trading-network
+    depends_on:
+      - timescaledb
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: trading-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - trading-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+
+  # ===== DATA INGESTION =====
+  data-ingestion:
+    build:
+      context: .
+      dockerfile: docker/data-ingestion/Dockerfile
+    container_name: trading-data-ingestion
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: trading_data
+      POSTGRES_USER: trading_writer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Add API keys for data providers
+      ALPACA_API_KEY: ${ALPACA_API_KEY:-}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY:-}
+      POLYGON_API_KEY: ${POLYGON_API_KEY:-}
+      IB_HOST: ${IB_HOST:-}
+      IB_PORT: ${IB_PORT:-}
+      COINBASE_API_KEY: ${COINBASE_API_KEY:-}
+    volumes:
+      - ./data-management:/app/data-management
+      - ./logs:/app/logs
+      - parquet_storage:/app/data/parquet
+    networks:
+      - trading-network
+    depends_on:
+      - timescaledb
+      - redis
+    command: python -m data_management.ingestion.scheduler
+
+  # ===== TRADING API =====
+  trading-api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: trading-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: trading_data
+      POSTGRES_USER: trading_reader
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./api:/app/api
+      - ./data-management:/app/data-management
+    networks:
+      - trading-network
+    depends_on:
+      - timescaledb
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== JUPYTER NOTEBOOK =====
+  jupyter:
+    build:
+      context: .
+      dockerfile: docker/jupyter/Dockerfile
+    container_name: trading-jupyter
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    environment:
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: trading_data
+      POSTGRES_USER: trading_reader
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JUPYTER_ENABLE_LAB: "yes"
+    volumes:
+      - ./python-algorithms:/app/python-algorithms
+      - ./data-management:/app/data-management
+      - ./notebooks:/app/notebooks
+      - jupyter_data:/home/jovyan/work
+    networks:
+      - trading-network
+    depends_on:
+      - timescaledb
+      - redis
+    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
+
+  # ===== STRATEGY RUNNER =====
+  strategy-runner:
+    build:
+      context: .
+      dockerfile: docker/strategy-runner/Dockerfile
+    container_name: trading-strategy-runner
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: trading_data
+      POSTGRES_USER: trading_writer
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      TRADING_MODE: ${TRADING_MODE:-paper}  # paper or live
+      # Broker API keys
+      ALPACA_API_KEY: ${ALPACA_API_KEY:-}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY:-}
+    volumes:
+      - ./python-algorithms:/app/python-algorithms
+      - ./data-management:/app/data-management
+      - ./logs:/app/logs
+    networks:
+      - trading-network
+    depends_on:
+      - timescaledb
+      - redis
+      - trading-api
+    command: python -m python_algorithms.execution.live_trading
+
+  # ===== ALERTING =====
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: trading-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/config.yml:/etc/alertmanager/config.yml
+      - alertmanager_data:/alertmanager
+    networks:
+      - trading-network
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+
+volumes:
+  timescale_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  grafana_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  jupyter_data:
+    driver: local
+  parquet_storage:
+    driver: local
+
+networks:
+  trading-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16

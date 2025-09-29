@@ -35,3 +35,4 @@ if __name__ == '__main__':
     end = datetime.now().strftime('%Y-%m-%d')
     data = yf.download(symbol, start=start, end=end)
     plot_candlesticks(data, f'{symbol} Candlestick Chart')
+

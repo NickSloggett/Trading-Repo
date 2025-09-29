@@ -36,3 +36,4 @@ if __name__ == '__main__':
     start = '2020-01-01'
     end = datetime.now().strftime('%Y-%m-%d')
     fetch_and_save(symbol, start, end)
+

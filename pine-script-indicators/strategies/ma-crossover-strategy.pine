@@ -33,3 +33,4 @@ if (long_condition)
 // Alerts
 alertcondition(long_condition, title="Long Entry", message="Enter Long Position")
 alertcondition(short_condition, title="Short Entry", message="Enter Short Position")
+
