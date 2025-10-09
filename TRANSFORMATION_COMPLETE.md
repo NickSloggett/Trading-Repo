@@ -519,3 +519,7 @@ Start developing! 🚀
 **Version**: 2.0.0
 
 *"From basic indicator repo to professional trading platform"*
+
+
+
+

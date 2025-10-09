@@ -267,3 +267,7 @@ class YFinanceProvider(BaseDataProvider):
         except Exception as e:
             logger.error(f"Error getting market status for {symbol}: {e}")
             return {}
+
+
+
+

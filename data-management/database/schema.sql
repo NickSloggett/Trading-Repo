@@ -330,3 +330,7 @@ COMMENT ON TABLE data_quality IS 'Data quality metrics and issue tracking';
 COMMENT ON TABLE ingestion_logs IS 'Audit log for all data ingestion jobs';
 COMMENT ON MATERIALIZED VIEW ohlc_daily IS 'Pre-aggregated daily OHLC data from minute bars';
 COMMENT ON MATERIALIZED VIEW ohlc_hourly IS 'Pre-aggregated hourly OHLC data from minute bars';
+
+
+
+
