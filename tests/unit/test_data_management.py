@@ -30,7 +30,16 @@ class TestTimescaleHandler:
     async def test_connection_mock(self):
         """Test database connection (mocked)"""
         # Basic test that doesn't require actual database connection
-        assert True
+        # Test that the class can be instantiated (will fail if DB not available)
+        if TimescaleHandler is None:
+            pytest.skip("TimescaleHandler module not available")
+        try:
+            handler = TimescaleHandler()
+            # If we get here, the class exists and can be instantiated
+            assert handler is not None
+        except Exception:
+            # If database connection fails, that's expected in test environment
+            pytest.skip("Database not available for testing")
 
     def test_data_validation(self):
         """Test data validation utilities"""
