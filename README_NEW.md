@@ -118,11 +118,10 @@ Trading-Repo/
 │   ├── integration/
 │   └── backtests/
 │
-├── .github/                      # CI/CD workflows
-│   └── workflows/
-│       ├── python-tests.yml
-│       ├── data-quality.yml
-│       └── deploy.yml
+├── docs/                         # Documentation
+│   ├── api-reference/
+│   ├── examples/
+│   └── getting-started/
 │
 ├── docker-compose.yml            # Full stack deployment
 ├── requirements.txt              # Python dependencies
