@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.9'
 
 # Full Stack Trading Platform
 # Includes: Database, Cache, Monitoring, Data Ingestion, API, Jupyter
@@ -6,7 +6,7 @@ version: '3.8'
 services:
   # ===== DATABASE =====
   timescaledb:
-    image: timescale/timescaledb:latest-pg15
+    image: timescale/timescaledb:latest-pg16
     container_name: trading-timescaledb
     restart: unless-stopped
     ports:
@@ -26,6 +26,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
     command:
       - "postgres"
       - "-c" 
@@ -55,7 +56,7 @@ services:
 
   # ===== CACHE =====
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine
     container_name: trading-redis
     restart: unless-stopped
     ports:
@@ -64,12 +65,13 @@ services:
       - redis_data:/data
     networks:
       - trading-network
-    command: redis-server --appendonly yes --maxmemory 4gb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 4gb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-redis123}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis123}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 10s
 
   # ===== DATABASE ADMIN =====
   pgadmin:
@@ -82,12 +84,14 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@trading.local
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
+      SCRIPT_NAME: /pgadmin
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     networks:
       - trading-network
     depends_on:
-      - timescaledb
+      timescaledb:
+        condition: service_healthy
 
   # ===== MONITORING =====
   grafana:
@@ -99,8 +103,9 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
-      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: ""
+      GF_INSTALL_PLUGINS: grafana-piechart-panel,grafana-worldmap-panel
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: "grafana-piechart-panel,grafana-worldmap-panel"
+      GF_USERS_ALLOW_SIGN_UP: 'false'
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
@@ -108,8 +113,10 @@ services:
     networks:
       - trading-network
     depends_on:
-      - timescaledb
-      - prometheus
+      timescaledb:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
 
   prometheus:
     image: prom/prometheus:latest
@@ -128,12 +135,18 @@ services:
       - '--storage.tsdb.retention.time=90d'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # ===== DATA INGESTION =====
   data-ingestion:
     build:
       context: .
-      dockerfile: docker/data-ingestion/Dockerfile
+      dockerfile: Dockerfile
     container_name: trading-data-ingestion
     restart: unless-stopped
     environment:
@@ -144,6 +157,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
       # Add API keys for data providers
       ALPACA_API_KEY: ${ALPACA_API_KEY:-}
       ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY:-}
@@ -158,15 +172,17 @@ services:
     networks:
       - trading-network
     depends_on:
-      - timescaledb
-      - redis
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: python -m data_management.ingestion.scheduler
 
   # ===== TRADING API =====
   trading-api:
     build:
       context: .
-      dockerfile: docker/api/Dockerfile
+      dockerfile: Dockerfile
     container_name: trading-api
     restart: unless-stopped
     ports:
@@ -179,25 +195,29 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
     volumes:
       - ./api:/app/api
       - ./data-management:/app/data-management
     networks:
       - trading-network
     depends_on:
-      - timescaledb
-      - redis
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 20s
 
   # ===== JUPYTER NOTEBOOK =====
   jupyter:
     build:
       context: .
-      dockerfile: docker/jupyter/Dockerfile
+      dockerfile: Dockerfile
     container_name: trading-jupyter
     restart: unless-stopped
     ports:
@@ -210,24 +230,26 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
       JUPYTER_ENABLE_LAB: "yes"
     volumes:
       - ./python-algorithms:/app/python-algorithms
       - ./data-management:/app/data-management
       - ./notebooks:/app/notebooks
-      - jupyter_data:/home/jovyan/work
+      - jupyter_data:/home/app/work
     networks:
       - trading-network
     depends_on:
-      - timescaledb
-      - redis
-    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # ===== STRATEGY RUNNER =====
   strategy-runner:
     build:
       context: .
-      dockerfile: docker/strategy-runner/Dockerfile
+      dockerfile: Dockerfile
     container_name: trading-strategy-runner
     restart: unless-stopped
     environment:
@@ -238,6 +260,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
       TRADING_MODE: ${TRADING_MODE:-paper}  # paper or live
       # Broker API keys
       ALPACA_API_KEY: ${ALPACA_API_KEY:-}
@@ -249,9 +272,12 @@ services:
     networks:
       - trading-network
     depends_on:
-      - timescaledb
-      - redis
-      - trading-api
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      trading-api:
+        condition: service_healthy
     command: python -m python_algorithms.execution.live_trading
 
   # ===== ALERTING =====
@@ -269,6 +295,12 @@ services:
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   timescale_data:

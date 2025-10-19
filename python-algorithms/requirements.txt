@@ -1,12 +1,14 @@
-pandas>=1.5.0
-numpy>=1.24.0
-yfinance>=0.2.0
-backtrader>=1.9.76
-matplotlib>=3.7.0
-jupyter
-plotly>=5.0.0
-scipy>=1.10.0
-scikit-learn>=1.2.0
-ta>=0.10.0
-python-dotenv>=1.0.0
+pandas>=2.2.0
+numpy>=1.26.0
+yfinance>=0.2.50
+backtrader>=1.9.78
+matplotlib>=3.9.0
+jupyter>=1.1.1
+plotly>=5.24.0
+scipy>=1.14.0
+scikit-learn>=1.5.0
+ta>=0.11.0
+python-dotenv>=1.0.1
+vectorbt>=0.30.2
+quantstats>=0.0.63
 

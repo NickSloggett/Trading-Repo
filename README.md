@@ -1,7 +1,7 @@
 # 🚀 Trading Development Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Documentation](https://img.shields.io/badge/docs-comprehensive-brightgreen.svg)](./docs/)
 
 > **The Ultimate Repository for Professional Trading System Development**
@@ -136,9 +136,10 @@ Trading-Repo/
 
 ```bash
 # System requirements
-- Python 3.8+
-- Docker & Docker Compose
+- Python 3.11+ (3.13 recommended)
+- Docker & Docker Compose (latest)
 - Git
+- pip (latest)
 - (Optional) Visual Studio / GCC for C++/C# development
 ```
 
