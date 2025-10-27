@@ -85,7 +85,12 @@ class YFinanceProvider(BaseDataProvider):
             if df.empty:
                 logger.warning(f"No data returned for {symbol}")
                 return pd.DataFrame()
-            
+
+            # Handle MultiIndex columns from newer yfinance versions
+            if isinstance(df.columns, pd.MultiIndex):
+                # Flatten MultiIndex columns by taking the first level (price type)
+                df.columns = df.columns.get_level_values(0)
+
             # Standardize format
             df.reset_index(inplace=True)
             df.rename(columns={
@@ -97,11 +102,11 @@ class YFinanceProvider(BaseDataProvider):
                 'Close': 'close',
                 'Volume': 'volume'
             }, inplace=True)
-            
+
             # Select required columns
             required_cols = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
             df = df[required_cols]
-            
+
             # Standardize
             df = self.standardize_dataframe(df)
             
@@ -193,12 +198,23 @@ class YFinanceProvider(BaseDataProvider):
                 symbol = symbols[0]
                 df = data.reset_index()
                 df = self._format_dataframe(df)
-                result[symbol] = df
+                if not df.empty:
+                    result[symbol] = df
             else:
-                # Multiple symbols
+                # Multiple symbols - handle MultiIndex
+                if isinstance(data.columns, pd.MultiIndex):
+                    # Flatten MultiIndex columns
+                    data.columns = data.columns.get_level_values(0)
+
                 for symbol in symbols:
                     try:
-                        df = data[symbol].reset_index()
+                        if symbol in data.columns.get_level_values(1).unique():
+                            # Multi-symbol data structure
+                            df = data.xs(symbol, axis=1, level=1).reset_index()
+                        else:
+                            # Fallback: try to get column directly
+                            df = data[symbol].reset_index() if symbol in data.columns else pd.DataFrame()
+
                         df = self._format_dataframe(df)
                         if not df.empty:
                             result[symbol] = df
@@ -217,7 +233,12 @@ class YFinanceProvider(BaseDataProvider):
         """Format DataFrame from yfinance output"""
         if df.empty:
             return df
-        
+
+        # Handle MultiIndex columns from newer yfinance versions
+        if isinstance(df.columns, pd.MultiIndex):
+            # Flatten MultiIndex columns by taking the first level (price type)
+            df.columns = df.columns.get_level_values(0)
+
         df.rename(columns={
             'Date': 'timestamp',
             'Datetime': 'timestamp',
@@ -227,11 +248,11 @@ class YFinanceProvider(BaseDataProvider):
             'Close': 'close',
             'Volume': 'volume'
         }, inplace=True)
-        
+
         required_cols = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
         available_cols = [col for col in required_cols if col in df.columns]
         df = df[available_cols]
-        
+
         return self.standardize_dataframe(df)
     
     @staticmethod

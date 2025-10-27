@@ -19,15 +19,14 @@ class OptimizedMACrossover(bt.Strategy):
         self.fast_ma = bt.indicators.SMA(self.data.close, period=self.params.fast_period)
         self.slow_ma = bt.indicators.SMA(self.data.close, period=self.params.slow_period)
         self.crossover = bt.indicators.CrossOver(self.fast_ma, self.slow_ma)
-        self.crossunder = bt.indicators.CrossUnder(self.fast_ma, self.slow_ma)
 
     def next(self):
-        if self.crossover[0] > 0:
+        if self.crossover[0] > 0:  # Fast MA crosses above slow MA
             if not self.position:
                 self.buy()
                 if self.params.printlog:
                     print(f'Buy at {self.data.close[0]:.2f}')
-        elif self.crossunder[0] > 0:
+        elif self.crossover[0] < 0:  # Fast MA crosses below slow MA
             if self.position:
                 self.sell()
                 if self.params.printlog:
@@ -78,6 +77,11 @@ async def run_backtest_async(symbol: str = 'AAPL', start_date: Optional[datetime
     # Download data asynchronously
     async with aiohttp.ClientSession() as session:
         data_df = await download_data_async(symbol, start_date, end_date, session)
+
+    # Handle MultiIndex columns from newer yfinance versions
+    if isinstance(data_df.columns, pd.MultiIndex):
+        # Flatten MultiIndex columns by taking the first level (price type)
+        data_df.columns = data_df.columns.get_level_values(0)
 
     # Ensure we have the required columns
     required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']

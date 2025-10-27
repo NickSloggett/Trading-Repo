@@ -1,0 +1,77 @@
+version: '3.9'
+
+# Development Environment
+# Minimal setup for local development and testing
+
+services:
+  # PostgreSQL with TimescaleDB for time-series data
+  db:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: trading_data
+      POSTGRES_USER: trading_admin
+      POSTGRES_PASSWORD: dev_password_123
+      TIMESCALEDB_TELEMETRY: "off"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data-management/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trading_admin -d trading_data"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=timescaledb"
+      - "-c"
+      - "max_connections=50"
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Jupyter Lab for interactive development
+  jupyter:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/venv  # Exclude virtual environment from volume mount
+    environment:
+      - JUPYTER_TOKEN=dev_token_123
+      - DATABASE_URL=postgresql://trading_admin:dev_password_123@db:5432/trading_data
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--ServerApp.token=dev_token_123"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  redis_data:

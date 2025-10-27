@@ -3,6 +3,15 @@ version: '3.9'
 # Full Stack Trading Platform
 # Includes: Database, Cache, Monitoring, Data Ingestion, API, Jupyter
 
+x-common-env: &common-env
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+  PGADMIN_PASSWORD: ${PGADMIN_PASSWORD:-admin123}
+  GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+
+x-common-networks: &common-networks
+  - trading-network
+
 services:
   # ===== DATABASE =====
   timescaledb:
@@ -12,9 +21,9 @@ services:
     ports:
       - "5432:5432"
     environment:
+      <<: *common-env
       POSTGRES_DB: trading_data
       POSTGRES_USER: trading_admin
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
       TIMESCALEDB_TELEMETRY: "off"
     volumes:
       - timescale_data:/var/lib/postgresql/data
@@ -63,9 +72,20 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - trading-network
-    command: redis-server --appendonly yes --maxmemory 4gb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-redis123}
+    networks: *common-networks
+    command:
+      - redis-server
+      - --appendonly
+      - --maxmemory
+      - 4gb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --requirepass
+      - ${REDIS_PASSWORD:-redis123}
+      - --protected-mode
+      - yes
+      - --bind
+      - 0.0.0.0
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis123}", "ping"]
       interval: 10s

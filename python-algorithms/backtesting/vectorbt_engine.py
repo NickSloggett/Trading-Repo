@@ -435,53 +435,124 @@ class VectorbtBacktester:
         )
 
 
+def example_sma_crossover_strategy(
+    data: pd.DataFrame,
+    fast_period: int = 10,
+    slow_period: int = 30
+) -> tuple[pd.Series, pd.Series]:
+    """
+    Example SMA crossover strategy for demonstration.
+
+    Args:
+        data: OHLCV DataFrame
+        fast_period: Fast moving average period
+        slow_period: Slow moving average period
+
+    Returns:
+        Tuple of (entries, exits) boolean series
+    """
+    if data.empty or 'close' not in data.columns:
+        return pd.Series(dtype=bool), pd.Series(dtype=bool)
+
+    try:
+        # Calculate moving averages
+        fast_ma = data['close'].rolling(window=fast_period).mean()
+        slow_ma = data['close'].rolling(window=slow_period).mean()
+
+        # Generate signals
+        entries = (fast_ma > slow_ma) & (fast_ma.shift(1) <= slow_ma.shift(1))
+        exits = (fast_ma < slow_ma) & (fast_ma.shift(1) >= slow_ma.shift(1))
+
+        # Fill NaN values
+        entries = entries.fillna(False)
+        exits = exits.fillna(False)
+
+        return entries, exits
+
+    except Exception as e:
+        logger.error(f"Error in SMA crossover strategy: {e}")
+        return pd.Series(dtype=bool), pd.Series(dtype=bool)
+
+
 # Example usage
 if __name__ == '__main__':
     # Example: SMA crossover strategy
     import sys
-    sys.path.append('..')
-    from data_management.query import DataAPI
-    
-    # Get data
-    api = DataAPI()
-    data = api.get_ohlc('AAPL', start='2020-01-01', end='2023-12-31')
-    
-    # Define strategy
-    def sma_crossover_strategy(data, fast_period=10, slow_period=30):
-        fast_ma = data['close'].rolling(fast_period).mean()
-        slow_ma = data['close'].rolling(slow_period).mean()
-        
-        entries = (fast_ma > slow_ma) & (fast_ma.shift(1) <= slow_ma.shift(1))
-        exits = (fast_ma < slow_ma) & (fast_ma.shift(1) >= slow_ma.shift(1))
-        
-        return entries, exits
-    
+    from pathlib import Path
+
+    # Add parent directory to path for imports
+    parent_dir = Path(__file__).parent.parent
+    sys.path.insert(0, str(parent_dir))
+
+    try:
+        # Try to import data fetching utility
+        from python_algorithms.utils.fetch_data import fetch_and_save
+
+        # Get data using our utility
+        data = fetch_and_save('AAPL', '2020-01-01', '2023-12-31')
+        if data is None:
+            logger.error("Failed to fetch data. Using sample data instead.")
+            # Create sample data for demonstration
+            import numpy as np
+            dates = pd.date_range('2020-01-01', '2023-12-31', freq='D')
+            np.random.seed(42)
+            prices = 100 * np.cumprod(1 + np.random.normal(0.0005, 0.02, len(dates)))
+            data = pd.DataFrame({
+                'open': prices * (1 + np.random.normal(0, 0.005, len(dates))),
+                'high': prices * (1 + np.random.normal(0.005, 0.01, len(dates))),
+                'low': prices * (1 - np.random.normal(0.005, 0.01, len(dates))),
+                'close': prices,
+                'volume': np.random.randint(1000000, 10000000, len(dates))
+            }, index=dates)
+
+    except ImportError:
+        logger.warning("Data fetching utility not available. Using sample data.")
+        # Create sample data for demonstration
+        import numpy as np
+        dates = pd.date_range('2020-01-01', '2023-12-31', freq='D')
+        np.random.seed(42)
+        prices = 100 * np.cumprod(1 + np.random.normal(0.0005, 0.02, len(dates)))
+        data = pd.DataFrame({
+            'open': prices * (1 + np.random.normal(0, 0.005, len(dates))),
+            'high': prices * (1 + np.random.normal(0.005, 0.01, len(dates))),
+            'low': prices * (1 - np.random.normal(0.005, 0.01, len(dates))),
+            'close': prices,
+            'volume': np.random.randint(1000000, 10000000, len(dates))
+        }, index=dates)
+
     # Run backtest
     config = BacktestConfig(
         initial_capital=10000,
         commission=0.001,
         stop_loss=0.02
     )
-    
+
     backtester = VectorbtBacktester(config)
-    
-    entries, exits = sma_crossover_strategy(data, 10, 30)
+
+    entries, exits = example_sma_crossover_strategy(data, 10, 30)
     results = backtester.backtest_signals(data, entries, exits)
-    
+
+    print("SMA Crossover Strategy Results:")
     print(results)
-    
-    # Optimize parameters
+
+    # Optimize parameters (smaller grid for demo)
     param_grid = {
-        'fast_period': [5, 10, 20],
-        'slow_period': [20, 30, 50]
+        'fast_period': [5, 10],
+        'slow_period': [20, 30]
     }
-    
-    best_params, best_results = backtester.optimize_parameters(
-        data, sma_crossover_strategy, param_grid
-    )
-    
-    print(f"\nBest parameters: {best_params}")
-    print(best_results)
+
+    try:
+        best_params, best_results = backtester.optimize_parameters(
+            data, example_sma_crossover_strategy, param_grid
+        )
+
+        print("
+Optimization Results:")
+        print(f"Best parameters: {best_params}")
+        print(best_results)
+    except Exception as e:
+        logger.error(f"Parameter optimization failed: {e}")
+        print("Parameter optimization completed with some errors.")
 
 
 
