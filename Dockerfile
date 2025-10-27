@@ -1,5 +1,5 @@
 # Multi-stage build for optimized image size and security
-FROM python:3.13-slim as builder
+FROM python:3.14-slim as builder
 
 # Set environment variables for security and performance
 ENV PYTHONUNBUFFERED=1 \
@@ -38,7 +38,7 @@ RUN poetry config virtualenvs.create false
 RUN poetry install --only=main --no-dev --no-interaction --no-ansi
 
 # Production stage
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # Metadata labels
 LABEL maintainer="Nick Sloggett <nick.sloggett@gmail.com>" \
