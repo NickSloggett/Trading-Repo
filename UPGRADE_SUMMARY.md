@@ -1,5 +1,7 @@
 # 🎉 Trading-Repo Upgrade Summary
 
+> Archived upgrade summary. Canonical docs now live in `CHANGELOG.md` and `MIGRATION.md`.
+
 ## What Just Happened?
 
 Your Trading-Repo has been **completely transformed** from a basic indicator repository into a **professional, enterprise-grade trading development platform**!

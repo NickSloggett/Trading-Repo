@@ -120,10 +120,8 @@ dev = [
     "hypothesis>=6.122.0",
 
     # Code Quality
-    "black>=24.10.0",
     "flake8>=7.1.0",
     "mypy>=1.14.0",
-    "isort>=5.13.0",
     "pylint>=3.3.0",
     "ruff>=0.9.0",
 
@@ -172,35 +170,11 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["trading_repo*", "trading_tools*", "data_management*", "python_algorithms*"]
 exclude = ["tests*", "docs*", "scripts*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.txt", "*.md", "*.yml", "*.yaml"]
-
-# Black configuration
-[tool.black]
-line-length = 100
-target-version = ['py311']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | venv
-  | _build
-  | buck-out
-  | build
-  | dist
-  | node_modules
-  | \.pytest_cache
-  | \.vscode
-)/
-'''
 
 # Ruff configuration
 [tool.ruff]
@@ -216,7 +190,7 @@ select = [
     "UP", # pyupgrade
 ]
 ignore = [
-    "E501", # line too long, handled by black
+    "E501", # line too long, handled by formatter
     "B008", # do not perform function calls in argument defaults
     "C901", # too complex
 ]
@@ -290,24 +264,7 @@ exclude_lines = [
     "raise NotImplementedError",
     "if 0:",
     "if __name__ == .__main__.:",
-    "class .*\bProtocol\):",
-    "@(abc\.)?abstractmethod",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
 ]
 
-# Isort configuration
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 100
-known_first_party = ["trading_repo"]
-known_third_party = [
-    "pandas",
-    "numpy",
-    "scipy",
-    "matplotlib",
-    "seaborn",
-    "plotly",
-    "sklearn",
-    "tensorflow",
-    "torch",
-]

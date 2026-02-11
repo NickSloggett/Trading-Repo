@@ -1,31 +1,4 @@
-# Development dependencies for Trading-Repo
-# This file contains additional dependencies needed for development and CI/CD
-
-# Testing
-pytest>=8.3.0
-pytest-cov>=6.0.0
-pytest-asyncio>=0.25.0
-pytest-xdist>=3.6.0
-pytest-mock>=3.14.0
-hypothesis>=6.122.0
-
-# Code Quality
-black>=24.10.0
-flake8>=7.1.0
-mypy>=1.14.0
-isort>=5.13.0
-pylint>=3.3.0
-ruff>=0.9.0
-
-# Security
-bandit>=1.8.0
-safety>=3.2.0
-
-# Documentation
-sphinx>=8.0.0
-sphinx-rtd-theme>=2.1.0
-sphinx-autodoc-typehints>=1.28.0
-
-# Additional development tools
-pre-commit>=4.0.0
-commitizen>=4.1.0
+# Canonical development dependency definitions live in pyproject.toml ([project.optional-dependencies].dev).
+# Keep this file as a compatibility shim for tooling that expects requirements-dev.txt.
+-r requirements.txt
+-e .[dev]

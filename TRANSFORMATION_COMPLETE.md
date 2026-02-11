@@ -1,5 +1,7 @@
 # 🚀 Trading-Repo Transformation Complete
 
+> Archived transformation report. Canonical docs now live in `CHANGELOG.md` and `MIGRATION.md`.
+
 ## Overview
 
 Your Trading-Repo has been comprehensively transformed into a **professional, enterprise-grade trading development platform**. This document summarizes all the enhancements and new capabilities.

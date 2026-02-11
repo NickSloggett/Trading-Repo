@@ -103,6 +103,6 @@ CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", \
      "--ServerApp.token=''","--ServerApp.password=''","--ServerApp.allow_origin='*'"]
 
 # Alternative commands for different use cases:
-# For running scripts: docker run --rm -v $(pwd):/app trading-repo python python-algorithms/backtesting/example_ma_crossover.py
-# For FastAPI server: docker run --rm -p 8000:8000 trading-repo uvicorn main:app --host 0.0.0.0 --port 8000
+# For running scripts: docker run --rm -v $(pwd):/app trading-repo python python_algorithms/backtesting/example_ma_crossover.py
+# For CLI usage: docker run --rm -v $(pwd):/app trading-repo python -m trading_repo.cli
 

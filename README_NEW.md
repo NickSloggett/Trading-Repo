@@ -1,5 +1,7 @@
 # 🚀 Trading Development Platform
 
+> Archived modernization snapshot. Canonical docs now live in `CHANGELOG.md` and `MIGRATION.md`.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
 [![Documentation](https://img.shields.io/badge/docs-comprehensive-brightgreen.svg)](./docs/)

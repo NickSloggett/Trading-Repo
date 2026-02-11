@@ -47,7 +47,7 @@ We are committed to providing a welcoming and inclusive environment for everyone
 
 ### Prerequisites for Contributors
 
-- Python 3.8+ installed
+- Python 3.11+ installed
 - Git knowledge
 - Docker and Docker Compose (for testing)
 - Familiarity with the relevant platform (Pine Script, Java, C++, C#, or Python)
@@ -70,15 +70,31 @@ git remote add upstream https://github.com/NickSloggett/Trading-Repo.git
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies including dev tools
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
+# Install dependencies (canonical source: pyproject.toml)
+python -m pip install --upgrade pip
+pip install -e .[dev]
+
+# Optional: generate a pinned lock artifact when preparing releases
+# pip install pip-tools
+# pip-compile pyproject.toml --extra dev -o requirements.lock.txt
 
 # Start services
 cd data-management/database
 docker-compose up -d
 cd ../..
 ```
+
+### Branch Protection and Required Checks
+
+The protected `main` branch should require these checks before merge:
+
+- `CI / Ruff Lint`
+- `CI / MyPy Type Check`
+- `CI / Pytest (Python 3.11)`
+- `CI / Pytest (Python 3.12)`
+- `CI / Pytest (Python 3.13)`
+- `CI / Security Checks`
+- `Dependency Review / Dependency Review`
 
 ## How to Contribute
 

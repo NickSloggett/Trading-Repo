@@ -1,5 +1,7 @@
 # Trading-Repo
 
+> Archived legacy README. Canonical docs now live in `CHANGELOG.md` and `MIGRATION.md`.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A comprehensive repository for developing and testing trading indicators, strategies, algorithms, and data analysis tools. This repo supports Pine Script for TradingView, custom Java indicators for MotiveWave, Python-based trading algorithms, backtesting, and data visualization for analyzing years of trading data.
